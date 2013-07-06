@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Errors - Check the columns for READ, WRITE and CKSUM (checksum) drive errors
+# on all volumes and all drives using "zpool status". If any non-zero errors
+# are reported an email will be sent out. You should then look to replace the
+# faulty drive and run "zpool scrub" on the affected volume after resilvering.
+
+if [ ! -e /var/state/zfs.issue ]; then
+    errors=$(/sbin/zpool status | grep ONLINE | grep -v state | awk '{print $3 $4 $5}' | grep -v 000)
+    if [ "${errors}" ]; then
+        emailSubject="`hostname` - ZFS pool - Drive Errors"
+        echo -e "$emailSubject \n\n\n `/sbin/zpool list` \n\n\n `/sbin/zpool status`" | mail -s "$emailSubject" root
+        date > /var/state/zfs.issue
+    fi
+fi

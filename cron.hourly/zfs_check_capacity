@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Capacity - Make sure pool capacities are below 80% for best performance. The
+# percentage really depends on how large your volume is. If you have a 128GB
+# SSD then 80% is reasonable. If you have a 60TB raid-z2 array then you can
+# probably set the warning closer to 95%.
+#
+# ZFS uses a copy-on-write scheme. The file system writes new data to
+# sequential free blocks first and when the uberblock has been updated the new
+# inode pointers become valid. This method is true only when the pool has
+# enough free sequential blocks. If the pool is at capacity and space limited,
+# ZFS will be have to randomly write blocks. This means ZFS can not create an
+# optimal set of sequential writes and write performance is severely impacted.
+
+maxCapacity=80
+
+if [ ! -e /var/state/zfs.issue ]; then
+    capacity=$(/sbin/zpool list -H -o capacity)
+    for line in ${capacity//%/}
+    do
+        if [ $line -ge $maxCapacity ]; then
+            emailSubject="`hostname` - ZFS pool - Capacity Exceeded"
+            echo -e "$emailSubject \n\n\n `/sbin/zpool list` \n\n\n `/sbin/zpool status`" | mail -s "$emailSubject" root
+            date > /var/state/zfs.issue
+        fi
+    done
+fi

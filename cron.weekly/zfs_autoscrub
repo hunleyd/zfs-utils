@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for pool in $(zpool list -H -o name)
+do
+        zpool scrub $pool
+done

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Scrub Expired - Check if all volumes have been scrubbed in at least the last
+# 8 days. The general guide is to scrub volumes on desktop quality drives once
+# a week and volumes on enterprise class drives once a month. You can always
+# use cron to schedule "zpool scrub" in off hours.
+#
+# Scrubbing traverses all the data in the pool once and verifies all blocks can
+# be read. Scrubbing proceeds as fast as the devices allows, though the
+# priority of any I/O remains below that of normal calls. This operation might
+# negatively impact performance, but the file system will remain usable and
+# responsive while scrubbing occurs. To initiate an explicit scrub, use the
+# "zpool scrub" command.
+#
+# The scrubExpire variable is in seconds. So for 8 days we calculate 8 days
+# times 24 hours times 3600 seconds to equal 691200 seconds.
+
+scrubExpire=691200
+
+if [ ! -e /var/state/zfs.issue ]; then
+    currentDate=$(date +%s)
+    zfsVolumes=$(/sbin/zpool list -H -o name)
+
+    for volume in ${zfsVolumes}
+    do
+        if [ $(/sbin/zpool status $volume | egrep -c "none requested") -ge 1 ]; then
+            echo "ERROR: You need to run \"zpool scrub $volume\" before this script can monitor the scrub expiration time."
+            break
+        fi
+        if [ $(/sbin/zpool status $volume | egrep -c "scrub in progress|resilver") -ge 1 ]; then
+            break
+        fi
+
+        scrubRawDate=$(/sbin/zpool status $volume | grep scrub | awk '{print $11" "$12" " $13" " $14" "$15}')
+        scrubDate=$(date -d "$scrubRawDate" +%s)
+
+        if [ $(($currentDate - $scrubDate)) -ge $scrubExpire ]; then
+            emailSubject="`hostname` - ZFS pool - Scrub Time Expired. Scrub Needed on Volume(s)"
+            echo -e "$emailSubject \n\n\n `/sbin/zpool list` \n\n\n `/sbin/zpool status`" | mail -s "$emailSubject" root
+        fi
+    done
+fi
