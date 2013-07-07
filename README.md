@@ -16,6 +16,8 @@ Usage
 -----
 Simply drop the files in /etc/cron.{hourly,weekly}, edit to taste, and enjoy.
 
+I also use the auto snapshot script from https://github.com/zfsonlinux/zfs-auto-snapshot.git
+
 Requirements
 ------------
 Gentoo
