@@ -2,5 +2,8 @@
 
 for pool in $(zpool list -H -o name)
 do
+    health=$(zpool list -H -o health $pool)
+    if [ "$health" = "ONLINE" ] ; then
         zpool scrub $pool
+    fi
 done
